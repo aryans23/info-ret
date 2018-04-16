@@ -34,9 +34,9 @@ class User:
 user_data = {}
 movie_data = {}
 
-training_file = 'netflix-dataset/TrainingRatings.txt'
+train_file = 'netflix-dataset/TrainingRatings.txt'
 
-with open(training_file, 'r') as f:
+with open(train_file, 'r') as f:
     lines = f.readlines()
     for line in lines:
         a = line.rstrip('\n').split(',')
@@ -67,82 +67,69 @@ for movie_id, val in movie_data.items():
     
 
 
-testing_set = 'netflix-dataset/TestingRatings.txt'
+test_file = 'netflix-dataset/TestingRatings.txt'
 predicted = []
 true = []
 k = 0.001
 i = 0
 
-with open(testing_set, 'r') as f:
+with open(test_file, 'r') as f:
     lines = f.readlines()
     n = 0 
     mae_sum = 0.0 
     rmse_sum = 0.0 
     weights = {} 
 
-    for line in lines[:10]:
+    for line in lines[:5000]:
         print(i)
-        i += 1 
-        
-        a = line.rstrip('\n').split(',')
-        movie_id = a[0]
-        user_id = a[1]
-        rating = float(a[2])
-        
+        i += 1         
+        info = line.rstrip('\n').split(',')
+        movie_id = info[0]
+        user_id = info[1]
+        rating = float(info[2])
         if user_id in user_data:
-            current_user = user_data[user_id] 
-            avg_rating = current_user.avg_rating 
+            curr_user = user_data[user_id] 
+            avg_rating = curr_user.avg_rating 
             sum = 0.0 
-
-            for key, value in user_data.items(): 
-                
-                if (key != user_id and movie_id in value.ratings):
+            for new_user_id, train_movie in user_data.items(): 
+                if (new_user_id != user_id and movie_id in train_movie.ratings):
                     weight = 0 
-                    
-                    if (user_id, key) not in weights and (key, user_id) not in weights:
-                        
+                    if (user_id, new_user_id) not in weights and (new_user_id, user_id) not in weights:
                         num = 0
                         d1 = 0
                         d2 = 0
-                        for m, rating in value.ratings.items():
-                            
-                            if m != movie_id and m in current_user.ratings:
-                                num += (current_user.ratings[m]-current_user.avg_rating)*(rating-value.avg_rating) 
-                        for m, rating in value.ratings.items():
-                            
-                            if m != movie_id and m in current_user.ratings:
-                                d1 += pow((current_user.ratings[m]-current_user.avg_rating),2)
-                                d2 += pow((rating-value.avg_rating),2)
+                        for m, rating in train_movie.ratings.items():
+                            if m != movie_id and m in curr_user.ratings:
+                                num += (curr_user.ratings[m]-curr_user.avg_rating)*(rating-train_movie.avg_rating) 
+                        for m, rating in train_movie.ratings.items():
+                            if m != movie_id and m in curr_user.ratings:
+                                d1 += pow((curr_user.ratings[m]-curr_user.avg_rating),2)
+                                d2 += pow((rating-train_movie.avg_rating),2)
                         if (d1 == 0 or d2 == 0):
                             continue
                         weight = num/pow((d1*d2),0.5)
-                            
-                        
-                        weights[(user_id, key)] = weight
+                        weights[(user_id, new_user_id)] = weight
                     else:
-                        
-                        if (user_id, key) in weights:
-                            weight = weights[(user_id, key)]
-                        elif (key, user_id) in weights:
-                            weight = weights[(key, user_id)]
-                    
-                    sum += weight * (value.ratings[movie_id] - value.avg_rating)
-                    
-            calc_rating = avg_rating + k * sum # Here's our predicted rating.
+                        if (user_id, new_user_id) in weights:
+                            weight = weights[(user_id, new_user_id)]
+                        elif (new_user_id, user_id) in weights:
+                            weight = weights[(new_user_id, user_id)]
+                    sum += weight * (train_movie.ratings[movie_id] - train_movie.avg_rating)
+            predicted_rating = avg_rating + k * sum
 #             print("sum = " + str(sum))
 #             print("avg_rating = " + str(avg_rating))
-#             print("calc_rating = " + str(calc_rating))
+#             print("predicted_rating = " + str(predicted_rating))
 
-            if calc_rating < 1.0:
-                calc_rating = 1.0
-            elif calc_rating > 5.0:
-                calc_rating = 5.0
+            if predicted_rating < 1.0:
+                predicted_rating = 1.0
+            elif predicted_rating > 5.0:
+                predicted_rating = 5.0
             else:
-                calc_rating = round(calc_rating)
+                predicted_rating = round(predicted_rating)
 
             n += 1
 
-            predicted.append(calc_rating)
+            predicted.append(predicted_rating)
             true.append(rating)
 
     print(predicted)
